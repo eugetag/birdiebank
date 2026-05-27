@@ -1,7 +1,7 @@
 /**
  * Remote (Supabase) reads/writes for `notifications`.
  *
- * Golf Bet Ledger never transmits email/SMS — we only persist the copyable
+ * BirdieBank never transmits email/SMS — we only persist the copyable
  * message + a small status ("draft" vs "sent") so hosts can track history.
  */
 

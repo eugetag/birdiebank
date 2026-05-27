@@ -1,9 +1,11 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { BrandLogo } from "@/components/BrandLogo";
+import { APP_NAME } from "@/lib/brand";
 import ResultsView from "./ResultsView";
 
 export const metadata: Metadata = {
-  title: "Results — Golf Bet Ledger",
+  title: "Results",
   description: "Settlement summary and per-bet breakdown for the round.",
 };
 
@@ -11,16 +13,26 @@ export default function ResultsPage() {
   return (
     <div className="flex flex-1 flex-col">
       <header className="border-b border-sand/70 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="mx-auto flex w-full max-w-2xl items-center justify-between px-5 py-3 sm:px-8 sm:py-4">
+        <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-3 px-5 py-3 sm:px-8 sm:py-4">
           <Link
             href="/scorecard"
             className="inline-flex items-center gap-1.5 text-sm font-medium text-fairway-700 transition hover:text-fairway-900"
           >
             <span aria-hidden>←</span> Scorecard
           </Link>
-          <span className="text-sm font-medium text-fairway-900/70">
-            Results
-          </span>
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-fairway-900/80"
+          >
+            <BrandLogo className="h-6 w-6 shrink-0" />
+            <span className="font-semibold text-fairway-900">{APP_NAME}</span>
+          </Link>
+          <Link
+            href="/dashboard"
+            className="inline-flex h-9 items-center justify-center rounded-full border border-sand bg-white px-3 text-sm font-medium text-fairway-800 transition hover:bg-cream"
+          >
+            Dashboard
+          </Link>
         </div>
       </header>
 

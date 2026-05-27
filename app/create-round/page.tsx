@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import CreateRoundForm from "./CreateRoundForm";
 
 export const metadata: Metadata = {
-  title: "Create round — Golf Bet Ledger",
+  title: "Create round",
   description:
     "Step 1 of 3: set up your course, date, hole count, and starting hole.",
 };

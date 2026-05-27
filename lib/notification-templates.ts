@@ -6,6 +6,7 @@
  * call out to email or SMS providers from here.
  */
 
+import { APP_NAME } from "./brand";
 import { formatMoney, type PaymentInstruction } from "./payments";
 import type { CurrencyBag } from "./ledger";
 import type { Currency, RoundDetails } from "./types";
@@ -29,7 +30,7 @@ export type EmailMessage = {
   body: string;
 };
 
-export const EMAIL_SUBJECT = "Golf Bet Ledger - Round Settlement";
+export const EMAIL_SUBJECT = `${APP_NAME} - Round Settlement`;
 
 export function buildEmailMessage(ctx: NotificationContext): EmailMessage {
   const lines: string[] = [];
@@ -64,7 +65,7 @@ export function buildEmailMessage(ctx: NotificationContext): EmailMessage {
 
 export function buildSmsMessage(ctx: NotificationContext): string {
   const lines: string[] = [];
-  lines.push("Golf Bet Ledger");
+  lines.push(APP_NAME);
   lines.push("");
   lines.push(ctx.details.courseName);
   lines.push("");

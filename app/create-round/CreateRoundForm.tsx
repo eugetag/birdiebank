@@ -1,11 +1,17 @@
 "use client";
 
-import { useId, useMemo, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { RoundLimitPaywallModal } from "@/components/RoundLimitPaywallModal";
 import { useHasHydrated } from "@/lib/hooks";
-import { getDraft } from "@/lib/rounds";
+import { ensureDraftId, getDraft } from "@/lib/rounds";
 import { saveRoundDetailsOnCreate } from "@/lib/rounds-service";
 import { RoundSyncPill } from "@/lib/round-sync-pill";
+import {
+  recordRoundStarted,
+  shouldPreviewPaywall,
+  wouldBlockRoundCreation,
+} from "@/lib/subscription";
 import type { HoleCount, RoundDetails, RoundSyncState, StartingHole } from "@/lib/types";
 
 function todayIso(): string {
@@ -54,6 +60,9 @@ function CreateRoundFormInner({
   const [roundSyncState, setRoundSyncState] = useState<
     RoundSyncState | undefined
   >(initialRoundSyncState);
+  const [showPaywall, setShowPaywall] = useState(false);
+  const paywallBypassedRef = useRef(false);
+  const pendingDetailsRef = useRef<RoundDetails | null>(null);
 
   const courseId = useId();
   const roundNameId = useId();
@@ -68,6 +77,19 @@ function CreateRoundFormInner({
 
   const canContinue = Object.keys(errors).length === 0;
 
+  async function persistRound(details: RoundDetails) {
+    setSaving(true);
+    try {
+      const result = await saveRoundDetailsOnCreate(details);
+      recordRoundStarted(ensureDraftId());
+      setRoundSyncState(result.outcome);
+      router.push("/players");
+    } finally {
+      setSaving(false);
+      pendingDetailsRef.current = null;
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setTouched(true);
@@ -81,13 +103,27 @@ function CreateRoundFormInner({
       startingHole,
     };
 
-    setSaving(true);
-    try {
-      const result = await saveRoundDetailsOnCreate(details);
-      setRoundSyncState(result.outcome);
-      router.push("/players");
-    } finally {
-      setSaving(false);
+    if (wouldBlockRoundCreation()) {
+      setShowPaywall(true);
+      pendingDetailsRef.current = details;
+      return;
+    }
+
+    if (shouldPreviewPaywall() && !paywallBypassedRef.current) {
+      pendingDetailsRef.current = details;
+      setShowPaywall(true);
+      return;
+    }
+
+    await persistRound(details);
+  }
+
+  function handlePaywallContinueLater() {
+    paywallBypassedRef.current = true;
+    setShowPaywall(false);
+    const details = pendingDetailsRef.current;
+    if (details && !wouldBlockRoundCreation()) {
+      void persistRound(details);
     }
   }
 
@@ -96,6 +132,11 @@ function CreateRoundFormInner({
   }
 
   return (
+    <>
+    <RoundLimitPaywallModal
+      open={showPaywall}
+      onContinueLater={handlePaywallContinueLater}
+    />
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-8">
       <Section title="Round details">
         {roundSyncState ? (
@@ -196,6 +237,7 @@ function CreateRoundFormInner({
         </button>
       </ActionBar>
     </form>
+    </>
   );
 }
 

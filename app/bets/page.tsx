@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import BetsForm from "./BetsForm";
 
 export const metadata: Metadata = {
-  title: "Bets — Golf Bet Ledger",
+  title: "Bets",
   description: "Step 3 of 3: choose the bets for this round.",
 };
 

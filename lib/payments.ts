@@ -1,11 +1,12 @@
 /**
  * Settlement Assistant helpers.
  *
- * Golf Bet Ledger never processes payments — these helpers only derive
+ * BirdieBank never processes payments — these helpers only derive
  * friendly "send the money here" instructions from the per-player payment
  * profile and the round metadata, plus stable keys for tracking statuses.
  */
 
+import { defaultMemo } from "./brand";
 import type {
   Country,
   Currency,
@@ -114,7 +115,7 @@ function deriveDestination(profile: PaymentProfile): string | null {
  * locales and matches the example in the settlement-assistant spec exactly.
  */
 export function buildMemo(details: RoundDetails): string {
-  return `Golf Bet Ledger - ${details.courseName} - ${details.date}`;
+  return defaultMemo(details);
 }
 
 /** Default currency for a receiver based on their stored country. */
@@ -149,7 +150,7 @@ export function settlementKey(t: SettlementTransaction): string {
  *   Mike owes John $25 CAD
  *   Preferred payment: Interac e-Transfer
  *   Send to: john@email.com
- *   Memo: Golf Bet Ledger - Blue Devil - 2026-05-25
+ *   Memo: BirdieBank - Blue Devil - 2026-05-25
  *
  * If the payee has no usable payment method on file, the second/third
  * lines are replaced with a single explanatory line.

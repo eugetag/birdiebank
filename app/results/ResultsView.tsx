@@ -3,6 +3,7 @@
 import { useEffect, useId, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { APP_NAME } from "@/lib/brand";
 import {
   ensureDraftId,
   finalizeDraft,
@@ -686,7 +687,7 @@ function SettlementCard({
       </header>
 
       <p className="rounded-xl border border-fairway-200/70 bg-white/70 px-3 py-2 text-xs text-fairway-900/70">
-        Golf Bet Ledger is a settlement assistant — we never process or hold
+        {APP_NAME} is a settlement assistant — we never process or hold
         funds. Use these instructions to send money on your preferred app, then
         track each debt in your running ledger.
       </p>
@@ -1260,7 +1261,7 @@ function PlayerSettlementInfoCard({
           Player Settlement Info
         </h2>
         <p className="text-xs text-fairway-900/70">
-          Save email or phone so Golf Bet Ledger can recognise the same player
+          Save email or phone so {APP_NAME} can recognise the same player
           next round and track unpaid balances.
         </p>
       </header>
@@ -1847,7 +1848,7 @@ function NotificationsCard({
         </h2>
         <p className="text-xs text-fairway-900/70">
           Generate ready-to-send email or SMS messages for each debtor.
-          Golf Bet Ledger never sends anything — copy the text into your own
+          {APP_NAME} never sends anything — copy the text into your own
           mail or messaging app.
         </p>
       </header>
@@ -3610,7 +3611,7 @@ function formatSummaryText({
   const title = details.roundName
     ? `${details.roundName} — ${details.courseName}`
     : details.courseName;
-  lines.push(`Golf Bet Ledger — ${title}`);
+  lines.push(`${APP_NAME} — ${title}`);
   lines.push(formatDate(details.date));
   lines.push(`Players: ${players.map((p) => p.name).join(", ")}`);
   lines.push("");
@@ -3724,7 +3725,7 @@ function formatSummaryText({
   }
 
   lines.push("");
-  lines.push("Sent from Golf Bet Ledger");
+  lines.push(`Sent from ${APP_NAME}`);
   return lines.join("\n");
 }
 

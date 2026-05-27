@@ -4,7 +4,7 @@
  * Persists at `gbl_notifications` as a flat array. Each entry represents one
  * email or SMS message that the host has previewed (draft) or marked as sent.
  *
- * Golf Bet Ledger never actually transmits these messages — we only generate
+ * BirdieBank never actually transmits these messages — we only generate
  * the copy-pasteable text and remember what the host has produced so the
  * history view can show "you've sent 3 of 5 settlement messages this round."
  *

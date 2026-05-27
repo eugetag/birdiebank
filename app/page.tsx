@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { BrandLogo } from "@/components/BrandLogo";
+import { APP_NAME, TAGLINE } from "@/lib/brand";
 
 const bets = [
   {
@@ -81,18 +83,32 @@ function Header() {
     <header className="sticky top-0 z-30 border-b border-sand/70 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-5 py-3 sm:px-8 sm:py-4">
         <Link href="/" className="flex items-center gap-2.5">
-          <FlagMark className="h-7 w-7 text-fairway-600" />
+          <BrandLogo className="h-8 w-8 shrink-0" />
           <span className="text-base font-semibold tracking-tight text-fairway-900 sm:text-lg">
-            Golf Bet Ledger
+            {APP_NAME}
           </span>
         </Link>
-        <Link
-          href="/create-round"
-          className="inline-flex items-center gap-1.5 rounded-full bg-fairway-700 px-4 py-2 text-sm font-medium text-cream shadow-sm transition hover:bg-fairway-600 active:scale-[0.98]"
-        >
-          New round
-          <ArrowRight className="h-4 w-4" />
-        </Link>
+        <nav className="flex items-center gap-2">
+          <Link
+            href="/pricing"
+            className="inline-flex h-9 items-center justify-center rounded-full border border-sand bg-white px-3 text-sm font-medium text-fairway-800 transition hover:bg-cream sm:px-4"
+          >
+            Pricing
+          </Link>
+          <Link
+            href="/dashboard"
+            className="inline-flex h-9 items-center justify-center rounded-full border border-sand bg-white px-3 text-sm font-medium text-fairway-800 transition hover:bg-cream sm:px-4"
+          >
+            Dashboard
+          </Link>
+          <Link
+            href="/create-round"
+            className="inline-flex items-center gap-1.5 rounded-full bg-fairway-700 px-4 py-2 text-sm font-medium text-cream shadow-sm transition hover:bg-fairway-600 active:scale-[0.98]"
+          >
+            New round
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </nav>
       </div>
     </header>
   );
@@ -114,7 +130,7 @@ function Hero() {
         <div className="flex flex-col items-start gap-6 sm:items-center sm:text-center">
           <span className="inline-flex items-center gap-2 rounded-full border border-fairway-200 bg-cream px-3 py-1 text-xs font-medium text-fairway-700">
             <span className="h-1.5 w-1.5 rounded-full bg-fairway-500" />
-            Built for foursomes. No payments. Ever.
+            {TAGLINE}
           </span>
 
           <h1 className="max-w-3xl text-4xl font-semibold leading-[1.05] tracking-tight text-fairway-900 sm:text-5xl md:text-6xl">
@@ -131,11 +147,17 @@ function Hero() {
 
           <p className="max-w-2xl text-base leading-relaxed text-fairway-900/75 sm:text-lg">
             Set up the round, add your players, pick the bets, and enter scores
-            hole-by-hole. Golf Bet Ledger handles the math and tells you
-            exactly who owes whom at the 19th.
+            hole-by-hole. {APP_NAME} handles the math and tells you exactly who
+            owes whom at the 19th.
           </p>
 
           <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
+            <Link
+              href="/dashboard"
+              className="inline-flex h-12 w-full items-center justify-center rounded-full border border-fairway-200 bg-cream px-6 text-base font-medium text-fairway-800 transition hover:bg-sand/60 sm:w-auto"
+            >
+              Open dashboard
+            </Link>
             <Link
               href="/create-round"
               className="group inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-fairway-700 px-6 text-base font-medium text-cream shadow-sm transition hover:bg-fairway-600 active:scale-[0.99] sm:w-auto"
@@ -281,11 +303,11 @@ function Footer() {
     <footer className="border-t border-sand/60 bg-cream/50">
       <div className="mx-auto flex w-full max-w-5xl flex-col items-start justify-between gap-3 px-5 py-6 text-sm text-fairway-900/70 sm:flex-row sm:items-center sm:px-8">
         <div className="flex items-center gap-2">
-          <FlagMark className="h-4 w-4 text-fairway-600" />
-          <span>Golf Bet Ledger</span>
+          <BrandLogo className="h-5 w-5 shrink-0" />
+          <span>{APP_NAME}</span>
         </div>
         <p className="text-xs">
-          Settlement assistant only. We do not process payments.
+          {TAGLINE} Settlement assistant only — we do not process payments.
         </p>
       </div>
     </footer>
@@ -308,7 +330,7 @@ function Scorecard({ className = "" }: { className?: string }) {
       <div className="overflow-hidden rounded-3xl border border-sand/70 bg-white shadow-[0_20px_60px_-30px_rgba(20,32,26,0.35)]">
         <div className="flex items-center justify-between border-b border-sand/60 bg-cream/60 px-5 py-3">
           <div className="flex items-center gap-2">
-            <FlagMark className="h-4 w-4 text-fairway-600" />
+            <BrandLogo className="h-5 w-5 shrink-0" />
             <span className="text-sm font-semibold text-fairway-900">
               Saturday at Pine Hollow
             </span>
@@ -372,29 +394,6 @@ function Scorecard({ className = "" }: { className?: string }) {
         className="pointer-events-none absolute -bottom-6 left-1/2 h-12 w-[80%] -translate-x-1/2 rounded-full bg-fairway-900/10 blur-2xl"
       />
     </div>
-  );
-}
-
-function FlagMark({ className = "" }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.8}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden
-    >
-      <path d="M5 21V4" />
-      <path
-        d="M5 4h11l-2.5 3.5L16 11H5"
-        fill="currentColor"
-        fillOpacity={0.15}
-      />
-      <circle cx="5" cy="21" r="1" fill="currentColor" />
-    </svg>
   );
 }
 
