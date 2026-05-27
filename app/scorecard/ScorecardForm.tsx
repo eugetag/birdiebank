@@ -11,6 +11,22 @@ import {
 } from "@/lib/rounds";
 import { RoundSyncPill } from "@/lib/round-sync-pill";
 import { syncDraftScores } from "@/lib/scores-service";
+import { OcrDebugPanel } from "@/components/OcrDebugPanel";
+import {
+  analysisToScoresMap,
+  type OcrDebugState,
+  type ScorecardConfidence,
+} from "@/lib/scorecard-analysis";
+import {
+  buildOcrDebugState,
+  requestScorecardAnalysis,
+  SCORECARD_READ_ERROR,
+  tryParseAnalysisFromResponse,
+} from "@/lib/scorecard-analyze-client";
+import {
+  DEMO_SCORECARD_NOTE,
+  generateDemoExtractedScores,
+} from "@/lib/demo-scorecard";
 import {
   holesInPlayOrder,
   type Bets,
@@ -40,6 +56,13 @@ type PhotoMeta = {
   name: string;
   size: number;
   type: string;
+};
+
+type ScorecardExtractionReview = {
+  scores: ScoresMap;
+  confidence: ScorecardConfidence;
+  notes: string[];
+  isDemo?: boolean;
 };
 
 export default function ScorecardForm() {
@@ -168,9 +191,12 @@ function ScorecardFormInner({
       return null;
     }
   });
-  const [extractedScores, setExtractedScores] = useState<ScoresMap | null>(
+  const [extraction, setExtraction] = useState<ScorecardExtractionReview | null>(
     null,
   );
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
+  const [ocrDebug, setOcrDebug] = useState<OcrDebugState | null>(null);
   const [appliedNotice, setAppliedNotice] = useState(false);
 
   const effectiveCtpWinners = useMemo(
@@ -207,23 +233,90 @@ function ScorecardFormInner({
   function handlePhotoSelect(dataUrl: string, meta: PhotoMeta) {
     setScorecardPhoto(dataUrl);
     setPhotoMeta(meta);
-    setExtractedScores(null);
+    setExtraction(null);
+    setAnalyzeError(null);
+    setOcrDebug(null);
+  }
+
+  function handleUseDemoScorecard() {
+    setAnalyzeError(null);
+    setOcrDebug(null);
+    setAppliedNotice(false);
+    setExtraction({
+      scores: generateDemoExtractedScores(holes, players),
+      confidence: "high",
+      notes: [DEMO_SCORECARD_NOTE],
+      isDemo: true,
+    });
   }
 
   function handleClearPhoto() {
     setScorecardPhoto(null);
     setPhotoMeta(null);
-    setExtractedScores(null);
+    setExtraction(null);
+    setAnalyzeError(null);
+    setOcrDebug(null);
   }
 
   function handleEntryMode(next: EntryMode) {
     setEntryMode(next);
-    if (next === "manual") setExtractedScores(null);
+    if (next === "manual") {
+      setExtraction(null);
+      setAnalyzeError(null);
+      setOcrDebug(null);
+    }
   }
 
-  function handleAnalyze() {
-    setExtractedScores(generateMockExtractedScores(holes, players));
+  async function handleAnalyze() {
+    if (!scorecardPhoto || analyzing) return;
+    setAnalyzing(true);
+    setAnalyzeError(null);
+    setExtraction(null);
     setAppliedNotice(false);
+    setOcrDebug(null);
+
+    const response = await requestScorecardAnalysis({
+      imageDataUrl: scorecardPhoto,
+      fileName: photoMeta?.name ?? "scorecard.jpg",
+      playerNames: players.map((p) => p.name),
+      holeCount: details.holes,
+      holes,
+    });
+
+    setOcrDebug(buildOcrDebugState(scorecardPhoto, response));
+
+    const parsed = tryParseAnalysisFromResponse(response);
+
+    if (parsed) {
+      const scoresMap = analysisToScoresMap(parsed, holes, players);
+      const notes = [...parsed.notes];
+      if (!response.success) {
+        notes.unshift(response.error);
+        setAnalyzeError(SCORECARD_READ_ERROR);
+      }
+      setExtraction({
+        scores: scoresMap,
+        confidence: parsed.confidence,
+        notes,
+        isDemo: false,
+      });
+    } else {
+      setAnalyzeError(SCORECARD_READ_ERROR);
+      if (!response.success || response.rawResponse) {
+        const empty = buildEmptyScoresMap(holes, players);
+        const failNotes = !response.success
+          ? [response.error, "See OCR Debug for raw model output."]
+          : ["See OCR Debug for raw model output."];
+        setExtraction({
+          scores: empty,
+          confidence: "low",
+          notes: failNotes,
+          isDemo: false,
+        });
+      }
+    }
+
+    setAnalyzing(false);
   }
 
   function handleEditExtracted(
@@ -231,24 +324,27 @@ function ScorecardFormInner({
     playerId: string,
     value: number | null,
   ) {
-    setExtractedScores((prev) => {
+    setExtraction((prev) => {
       if (!prev) return prev;
       return {
         ...prev,
-        [hole]: { ...(prev[hole] ?? {}), [playerId]: value },
+        scores: {
+          ...prev.scores,
+          [hole]: { ...(prev.scores[hole] ?? {}), [playerId]: value },
+        },
       };
     });
   }
 
   function handleApplyExtracted() {
-    if (!extractedScores) return;
-    setScores(extractedScores);
-    setExtractedScores(null);
+    if (!extraction) return;
+    setScores(extraction.scores);
+    setExtraction(null);
     setAppliedNotice(true);
   }
 
   function handleDiscardExtracted() {
-    setExtractedScores(null);
+    setExtraction(null);
   }
 
   function updateScore(hole: number, playerId: string, value: number | null) {
@@ -330,16 +426,27 @@ function ScorecardFormInner({
         <PhotoSection
           photo={scorecardPhoto}
           meta={photoMeta}
+          analyzing={analyzing}
+          analyzeError={analyzeError}
           onSelect={handlePhotoSelect}
           onClear={handleClearPhoto}
-          onAnalyze={handleAnalyze}
+          onAnalyze={() => void handleAnalyze()}
+          onUseDemo={handleUseDemoScorecard}
           onSwitchToManual={() => handleEntryMode("manual")}
         />
       ) : null}
 
-      {extractedScores ? (
+      {ocrDebug && !extraction?.isDemo ? (
+        <OcrDebugPanel debug={ocrDebug} />
+      ) : null}
+
+      {extraction ? (
         <ExtractedReviewCard
-          extracted={extractedScores}
+          extracted={extraction.scores}
+          confidence={extraction.confidence}
+          notes={extraction.notes}
+          isDemo={extraction.isDemo}
+          parseWarning={!!analyzeError && !extraction.isDemo}
           holes={holes}
           players={players}
           onEdit={handleEditExtracted}
@@ -938,6 +1045,10 @@ function buildInitialScores(
   return out;
 }
 
+function buildEmptyScoresMap(holes: number[], players: Player[]): ScoresMap {
+  return buildInitialScores(holes, players, {});
+}
+
 function formatDate(iso: string): string {
   const [y, m, d] = iso.split("-").map(Number);
   if (!y || !m || !d) return iso;
@@ -1078,36 +1189,50 @@ function ModeOption({
 function PhotoSection({
   photo,
   meta,
+  analyzing,
+  analyzeError,
   onSelect,
   onClear,
   onAnalyze,
+  onUseDemo,
   onSwitchToManual,
 }: {
   photo: string | null;
   meta: PhotoMeta | null;
+  analyzing: boolean;
+  analyzeError: string | null;
   onSelect: (dataUrl: string, meta: PhotoMeta) => void;
   onClear: () => void;
   onAnalyze: () => void;
+  onUseDemo: () => void;
   onSwitchToManual: () => void;
 }) {
   return photo ? (
     <PhotoPreview
       photo={photo}
       meta={meta}
+      analyzing={analyzing}
+      analyzeError={analyzeError}
       onClear={onClear}
       onAnalyze={onAnalyze}
       onSwitchToManual={onSwitchToManual}
     />
   ) : (
-    <PhotoDropzone onSelect={onSelect} onSwitchToManual={onSwitchToManual} />
+    <PhotoDropzone
+      onSelect={onSelect}
+      onUseDemo={onUseDemo}
+      onSwitchToManual={onSwitchToManual}
+    />
   );
 }
 
 function PhotoDropzone({
   onSelect,
+  onUseDemo,
   onSwitchToManual,
 }: {
   onSelect: (dataUrl: string, meta: PhotoMeta) => void;
+  onUseDemo: () => void;
   onSwitchToManual: () => void;
 }) {
   const inputId = useId();
@@ -1205,13 +1330,22 @@ function PhotoDropzone({
 
       {error ? <p className="text-sm text-flag">{error}</p> : null}
 
-      <button
-        type="button"
-        onClick={onSwitchToManual}
-        className="self-center text-xs font-medium text-fairway-700 underline decoration-fairway-200 underline-offset-4 hover:text-fairway-900"
-      >
-        Or enter scores manually instead
-      </button>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-center">
+        <button
+          type="button"
+          onClick={onUseDemo}
+          className="inline-flex h-11 items-center justify-center rounded-full border border-gold/50 bg-gold/10 px-5 text-sm font-medium text-fairway-900 transition hover:bg-gold/20 active:scale-[0.99]"
+        >
+          Use Demo Scorecard
+        </button>
+        <button
+          type="button"
+          onClick={onSwitchToManual}
+          className="inline-flex h-11 items-center justify-center rounded-full border border-sand bg-white px-5 text-sm font-medium text-fairway-800 transition hover:bg-cream"
+        >
+          Enter Manually Instead
+        </button>
+      </div>
     </section>
   );
 }
@@ -1219,12 +1353,16 @@ function PhotoDropzone({
 function PhotoPreview({
   photo,
   meta,
+  analyzing,
+  analyzeError,
   onClear,
   onAnalyze,
   onSwitchToManual,
 }: {
   photo: string;
   meta: PhotoMeta | null;
+  analyzing: boolean;
+  analyzeError: string | null;
   onClear: () => void;
   onAnalyze: () => void;
   onSwitchToManual: () => void;
@@ -1276,14 +1414,30 @@ function PhotoPreview({
         )}
       </div>
 
+      {analyzeError ? (
+        <p className="rounded-xl border border-flag/30 bg-flag/[0.06] px-3 py-2.5 text-sm text-flag">
+          {analyzeError}
+        </p>
+      ) : null}
+
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <button
           type="button"
           onClick={onAnalyze}
-          className="inline-flex h-11 items-center justify-center gap-1.5 rounded-full bg-fairway-700 px-5 text-sm font-medium text-cream shadow-sm transition hover:bg-fairway-600 active:scale-[0.99]"
+          disabled={analyzing}
+          className="inline-flex h-11 items-center justify-center gap-1.5 rounded-full bg-fairway-700 px-5 text-sm font-medium text-cream shadow-sm transition hover:bg-fairway-600 active:scale-[0.99] disabled:cursor-wait disabled:bg-fairway-700/60"
         >
-          <SparkleIcon className="h-4 w-4" />
-          Analyze Scorecard
+          {analyzing ? (
+            <>
+              <SpinnerIcon className="h-4 w-4 animate-spin" />
+              Reading scorecard…
+            </>
+          ) : (
+            <>
+              <SparkleIcon className="h-4 w-4" />
+              Analyze Scorecard
+            </>
+          )}
         </button>
         <button
           type="button"
@@ -1297,29 +1451,14 @@ function PhotoPreview({
   );
 }
 
-/* ---------- Mock AI extraction review ---------- */
-
-/**
- * Build a complete `ScoresMap` filled with random scores in [3, 7] for every
- * (hole, player) pair. Used as a placeholder while we wire real OCR later.
- */
-function generateMockExtractedScores(
-  holes: number[],
-  players: Player[],
-): ScoresMap {
-  const out: ScoresMap = {};
-  for (const hole of holes) {
-    const row: Record<string, number | null> = {};
-    for (const p of players) {
-      row[p.id] = 3 + Math.floor(Math.random() * 5);
-    }
-    out[hole] = row;
-  }
-  return out;
-}
+/* ---------- AI extraction review ---------- */
 
 function ExtractedReviewCard({
   extracted,
+  confidence,
+  notes,
+  isDemo,
+  parseWarning,
   holes,
   players,
   onEdit,
@@ -1327,6 +1466,10 @@ function ExtractedReviewCard({
   onDiscard,
 }: {
   extracted: ScoresMap;
+  confidence: ScorecardConfidence;
+  notes: string[];
+  isDemo?: boolean;
+  parseWarning?: boolean;
   holes: number[];
   players: Player[];
   onEdit: (hole: number, playerId: string, value: number | null) => void;
@@ -1334,19 +1477,49 @@ function ExtractedReviewCard({
   onDiscard: () => void;
 }) {
   return (
-    <section className="flex flex-col gap-4 rounded-2xl border border-fairway-200 bg-white p-4 sm:p-5">
+    <section
+      className={[
+        "flex flex-col gap-4 rounded-2xl border bg-white p-4 sm:p-5",
+        isDemo ? "border-gold/50" : "border-fairway-200",
+      ].join(" ")}
+    >
       <header className="flex flex-col gap-1">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-fairway-700/80">
-          Mock extraction
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-fairway-700/80">
+            {isDemo ? "Demo extraction" : "AI extraction"}
+          </span>
+          {isDemo ? <DemoModePill /> : <ConfidencePill confidence={confidence} />}
+        </div>
         <h2 className="text-lg font-semibold tracking-tight text-fairway-900">
           Review Extracted Scores
         </h2>
+        {isDemo ? (
+          <p className="rounded-lg border border-gold/40 bg-gold/10 px-3 py-2 text-xs font-medium text-fairway-900">
+            Demo mode — not AI generated
+          </p>
+        ) : null}
+        {parseWarning ? (
+          <p className="rounded-lg border border-flag/30 bg-flag/[0.06] px-3 py-2 text-xs text-flag">
+            {SCORECARD_READ_ERROR} Check OCR Debug for the raw model response.
+          </p>
+        ) : null}
         <p className="text-xs text-fairway-900/70">
-          We&apos;ve pre-filled placeholder scores from your photo. Edit any
-          cell, then apply them to the scorecard below. Real OCR lands in the
-          next phase.
+          {isDemo
+            ? "Placeholder scores for your roster. Edit any cell, then apply them to the scorecard below."
+            : "Scores were read from your photo. Edit any cell, then apply them to the scorecard below."}
         </p>
+        {notes.length > 0 ? (
+          <ul className="mt-1 flex flex-col gap-1 text-xs text-fairway-900/65">
+            {notes.map((note) => (
+              <li key={note} className="flex gap-1.5">
+                <span aria-hidden className="text-fairway-500">
+                  ·
+                </span>
+                {note}
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </header>
 
       <div className="-mx-2 overflow-x-auto px-2">
@@ -1558,6 +1731,63 @@ function UploadCloudIcon({ className = "" }: { className?: string }) {
       <path d="M7 18a4 4 0 01-1-7.87A6 6 0 0118 8a4.5 4.5 0 01.5 8.97" />
       <path d="M12 12v8" />
       <path d="M9 15l3-3 3 3" />
+    </svg>
+  );
+}
+
+function DemoModePill() {
+  return (
+    <span className="inline-flex h-5 items-center rounded-full border border-gold/50 bg-gold/15 px-2 text-[10px] font-semibold uppercase tracking-wider text-gold">
+      Demo
+    </span>
+  );
+}
+
+function ConfidencePill({
+  confidence,
+}: {
+  confidence: ScorecardConfidence;
+}) {
+  const palette =
+    confidence === "high"
+      ? "border-fairway-300 bg-fairway-100 text-fairway-700"
+      : confidence === "medium"
+        ? "border-gold/40 bg-gold/15 text-gold"
+        : "border-flag/30 bg-flag/[0.08] text-flag";
+  return (
+    <span
+      className={[
+        "inline-flex h-5 items-center rounded-full border px-2 text-[10px] font-semibold uppercase tracking-wider",
+        palette,
+      ].join(" ")}
+    >
+      {confidence} confidence
+    </span>
+  );
+}
+
+function SpinnerIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      className={className}
+      aria-hidden
+    >
+      <circle
+        cx="12"
+        cy="12"
+        r="9"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeOpacity={0.25}
+      />
+      <path
+        d="M21 12a9 9 0 00-9-9"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
