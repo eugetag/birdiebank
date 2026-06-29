@@ -7,7 +7,7 @@ import PricingView from "./PricingView";
 export const metadata: Metadata = {
   title: "Pricing",
   description:
-    "Beta pricing for BirdieBank Free, Birdie Plan, and Founder Beta.",
+    "Beta pricing for TeeTabs Free, Birdie Plan, and Founder Beta.",
 };
 
 export default function PricingPage() {

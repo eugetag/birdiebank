@@ -1,4 +1,4 @@
-/* BirdieBank service worker — precache shell routes for offline use */
+/* TeeTabs service worker — precache shell routes for offline use */
 
 const CACHE_VERSION = "birdiebank-v1";
 const PRECACHE_URLS = [

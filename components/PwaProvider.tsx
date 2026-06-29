@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { APP_NAME } from "@/lib/brand";
 
 const INSTALL_DISMISS_KEY = "birdiebank_install_dismissed";
 
@@ -68,11 +69,11 @@ function InstallBanner() {
       <div className="space-y-3">
         <div>
           <p className="text-sm font-semibold text-slate-950">
-            Add BirdieBank to your phone
+            Add {APP_NAME} to your phone
           </p>
           <p className="text-xs text-slate-600">
             {deferredPrompt
-              ? "Install BirdieBank for a faster app-like experience."
+              ? `Install ${APP_NAME} for a faster app-like experience.`
               : "On iPhone, tap Share, then Add to Home Screen."}
           </p>
         </div>

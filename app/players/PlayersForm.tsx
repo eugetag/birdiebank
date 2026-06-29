@@ -434,8 +434,8 @@ function PlayersFormInner({
             </button>
           ) : (
             <p className="rounded-xl border border-dashed border-sand bg-cream/40 px-3 py-2.5 text-center text-xs leading-relaxed text-fairway-900/65">
-              Contact import is not supported on this browser. You can still add
-              players manually.
+              Contact import is not supported on this browser. Add player
+              manually.
             </p>
           )}
 

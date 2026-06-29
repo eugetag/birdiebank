@@ -1,7 +1,7 @@
 /**
  * Settlement Assistant helpers.
  *
- * BirdieBank never processes payments — these helpers only derive
+ * TeeTabs never processes payments — these helpers only derive
  * friendly "send the money here" instructions from the per-player payment
  * profile and the round metadata, plus stable keys for tracking statuses.
  */
@@ -150,7 +150,7 @@ export function settlementKey(t: SettlementTransaction): string {
  *   Mike owes John $25 CAD
  *   Preferred payment: Interac e-Transfer
  *   Send to: john@email.com
- *   Memo: BirdieBank - Blue Devil - 2026-05-25
+ *   Memo: TeeTabs - Blue Devil - 2026-05-25
  *
  * If the payee has no usable payment method on file, the second/third
  * lines are replaced with a single explanatory line.

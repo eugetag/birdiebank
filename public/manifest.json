@@ -1,7 +1,7 @@
 {
-  "name": "BirdieBank",
-  "short_name": "BirdieBank",
-  "description": "Keep your golf crew honest.",
+  "name": "TeeTabs",
+  "short_name": "TeeTabs",
+  "description": "Track every bet. Settle every round.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

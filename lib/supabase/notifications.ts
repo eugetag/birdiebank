@@ -1,7 +1,7 @@
 /**
  * Remote (Supabase) reads/writes for `notifications`.
  *
- * BirdieBank never transmits email/SMS — we only persist the copyable
+ * TeeTabs never transmits email/SMS — we only persist the copyable
  * message + a small status ("draft" vs "sent") so hosts can track history.
  */
 

@@ -15,7 +15,10 @@ export function isContactPickerSupported(): boolean {
   if (typeof window === "undefined" || typeof navigator === "undefined") {
     return false;
   }
-  return "contacts" in navigator && "ContactsManager" in window;
+  return (
+    "contacts" in navigator &&
+    typeof navigator.contacts?.select === "function"
+  );
 }
 
 function formatContactName(entry: ContactName | undefined): string {
@@ -52,7 +55,7 @@ export async function pickContactFromDevice(): Promise<PickedContact | null> {
   const contact = contacts[0];
   return {
     name: formatContactName(contact.name?.[0]),
-    email: (contact.email?.[0] ?? "").trim(),
+    email: (contact.email?.[0] ?? "").trim().toLowerCase(),
     phone: (contact.tel?.[0] ?? "").trim(),
   };
 }

@@ -146,6 +146,6 @@ export function tierLabel(tier: SubscriptionTier): string {
     case "founder":
       return "Founder Beta";
     default:
-      return "BirdieBank Free";
+      return "TeeTabs Free";
   }
 }

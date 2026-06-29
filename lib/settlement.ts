@@ -1,5 +1,5 @@
 /**
- * Pure settlement math for BirdieBank.
+ * Pure settlement math for TeeTabs.
  *
  * No React, no localStorage — given a fully-scored round, return a
  * deterministic `BetResults` summary the UI can render and persist.

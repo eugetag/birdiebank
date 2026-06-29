@@ -28,7 +28,7 @@ const PLANS: {
   {
     id: "free",
     tier: "free",
-    name: "BirdieBank Free",
+    name: "TeeTabs Free",
     price: "$0",
     features: [
       "4 rounds per month",
