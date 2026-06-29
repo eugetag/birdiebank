@@ -8,6 +8,28 @@
 import type { RoundDetails } from "../types";
 import { parseSupabaseError, type SupabaseErrorDetails } from "./errors";
 
+const REMOTE_TIMEOUT_MS = 15_000;
+
+async function withRemoteTimeout<T>(
+  work: () => Promise<T>,
+  ms = REMOTE_TIMEOUT_MS,
+): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      work(),
+      new Promise<T>((_, reject) => {
+        timeoutId = setTimeout(
+          () => reject(new Error("Cloud save timed out")),
+          ms,
+        );
+      }),
+    ]);
+  } finally {
+    if (timeoutId !== undefined) clearTimeout(timeoutId);
+  }
+}
+
 export type { SupabaseErrorDetails };
 
 export type InsertRoundRemoteResult =
@@ -47,11 +69,13 @@ export async function insertRoundRemote(
   const payload = detailsToRoundInsertPayload(details);
 
   try {
-    const { data, error } = await mod.supabase
-      .from("rounds")
-      .insert(payload)
-      .select("id")
-      .single();
+    const { data, error } = await withRemoteTimeout(async () =>
+      mod.supabase
+        .from("rounds")
+        .insert(payload)
+        .select("id")
+        .single(),
+    );
 
     if (error) {
       const errorInfo = parseSupabaseError(error);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { RoundLimitPaywallModal } from "@/components/RoundLimitPaywallModal";
 import { useHasHydrated } from "@/lib/hooks";
@@ -24,17 +24,38 @@ function todayIso(): string {
 
 export default function CreateRoundForm() {
   const hasHydrated = useHasHydrated();
+  const [ready, setReady] = useState(false);
+  const [initial, setInitial] = useState<RoundDetails | undefined>(undefined);
+  const [initialRoundSyncState, setInitialRoundSyncState] = useState<
+    RoundSyncState | undefined
+  >(undefined);
+  const [loadWarning, setLoadWarning] = useState<string | null>(null);
 
-  if (!hasHydrated) {
+  useEffect(() => {
+    if (!hasHydrated) return;
+    try {
+      const draft = getDraft();
+      setInitial(draft?.details);
+      setInitialRoundSyncState(draft?.roundSyncState);
+    } catch (err) {
+      console.warn("[create-round] could not read draft from localStorage", err);
+      setLoadWarning(
+        "Could not restore your last draft. You can still create a new round.",
+      );
+    } finally {
+      setReady(true);
+    }
+  }, [hasHydrated]);
+
+  if (!hasHydrated || !ready) {
     return <FormSkeleton />;
   }
 
-  // Safe to read localStorage now — we're past hydration on the client.
-  const draft = getDraft();
   return (
     <CreateRoundFormInner
-      initial={draft?.details}
-      initialRoundSyncState={draft?.roundSyncState}
+      initial={initial}
+      initialRoundSyncState={initialRoundSyncState}
+      loadWarning={loadWarning}
     />
   );
 }
@@ -42,9 +63,11 @@ export default function CreateRoundForm() {
 function CreateRoundFormInner({
   initial,
   initialRoundSyncState,
+  loadWarning,
 }: {
   initial?: RoundDetails;
   initialRoundSyncState?: RoundSyncState;
+  loadWarning?: string | null;
 }) {
   const router = useRouter();
 
@@ -61,6 +84,7 @@ function CreateRoundFormInner({
     RoundSyncState | undefined
   >(initialRoundSyncState);
   const [showPaywall, setShowPaywall] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const paywallBypassedRef = useRef(false);
   const pendingDetailsRef = useRef<RoundDetails | null>(null);
 
@@ -79,11 +103,19 @@ function CreateRoundFormInner({
 
   async function persistRound(details: RoundDetails) {
     setSaving(true);
+    setSaveError(null);
     try {
       const result = await saveRoundDetailsOnCreate(details);
       recordRoundStarted(ensureDraftId());
       setRoundSyncState(result.outcome);
       router.push("/players");
+    } catch (err) {
+      console.warn("[create-round] save failed", err);
+      setSaveError(
+        err instanceof Error
+          ? err.message
+          : "Could not save this round. Check your connection and try again.",
+      );
     } finally {
       setSaving(false);
       pendingDetailsRef.current = null;
@@ -138,6 +170,14 @@ function CreateRoundFormInner({
       onContinueLater={handlePaywallContinueLater}
     />
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-8">
+      {loadWarning ? (
+        <p
+          role="status"
+          className="rounded-xl border border-gold/40 bg-gold/10 px-3 py-2.5 text-sm text-fairway-900"
+        >
+          {loadWarning}
+        </p>
+      ) : null}
       <Section title="Round details">
         {roundSyncState ? (
           <div className="flex justify-start">
@@ -219,6 +259,12 @@ function CreateRoundFormInner({
         </Field>
       </Section>
 
+      {saveError ? (
+        <p role="alert" className="text-sm text-flag">
+          {saveError}
+        </p>
+      ) : null}
+
       <ActionBar>
         <button
           type="button"
@@ -246,9 +292,14 @@ function CreateRoundFormInner({
 function FormSkeleton() {
   return (
     <div
-      aria-hidden
       className="flex flex-col gap-8"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
     >
+      <p className="text-center text-sm text-fairway-900/60">
+        Loading round setup…
+      </p>
       <div className="flex flex-col gap-4 rounded-2xl border border-sand/70 bg-white p-5 sm:p-6">
         <div className="h-5 w-32 rounded-full bg-cream" />
         <div className="h-12 w-full rounded-xl bg-cream" />

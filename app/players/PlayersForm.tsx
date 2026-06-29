@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { PlayerDirectoryPicker } from "@/components/PlayerDirectoryPicker";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -21,6 +22,7 @@ import {
 import {
   getDirectory,
   normalizeContactKey,
+  paymentProfileFromDirectory,
   type DirectoryMap,
 } from "@/lib/directory";
 import {
@@ -51,22 +53,6 @@ const DEFAULT_METHOD: PaymentMethod = "Cash";
 
 function defaultProfile(): PaymentProfile {
   return { country: DEFAULT_COUNTRY, preferredMethod: DEFAULT_METHOD };
-}
-
-/** Hydrate a PaymentProfile from a directory entry, filling required fields. */
-function profileFromDirectory(entry: DirectoryEntry): PaymentProfile {
-  return {
-    country: entry.country ?? DEFAULT_COUNTRY,
-    preferredMethod: entry.preferredMethod ?? DEFAULT_METHOD,
-    interacEmail: entry.interacEmail,
-    interacPhone: entry.interacPhone,
-    venmoHandle: entry.venmoHandle,
-    cashAppTag: entry.cashAppTag,
-    paypalLink: entry.paypalLink,
-    zelleEmail: entry.zelleEmail,
-    zellePhone: entry.zellePhone,
-    notes: entry.notes,
-  };
 }
 
 function genId(): string {
@@ -130,6 +116,7 @@ function PlayersFormInner({
     RoundSyncState | undefined
   >(initialPlayersSyncState);
   const [continuing, setContinuing] = useState(false);
+  const [directoryOpen, setDirectoryOpen] = useState(false);
 
   const contactPickerAvailable = useMemo(() => isContactPickerSupported(), []);
 
@@ -217,7 +204,7 @@ function PlayersFormInner({
       name: finalName,
       normalizedContactKey: contactKey,
       paymentProfile: draftMatch
-        ? profileFromDirectory(draftMatch)
+        ? paymentProfileFromDirectory(draftMatch)
         : undefined,
     };
 
@@ -232,6 +219,36 @@ function PlayersFormInner({
     void syncSingleRoundPlayer(player).then((result) => {
       setPlayersSyncState(result.outcome);
     });
+  }
+
+  function addPlayerFromDirectory(
+    entry: DirectoryEntry,
+  ): { ok: true } | { ok: false; message: string } {
+    if (atCapacity) {
+      return { ok: false, message: `Maximum ${MAX_PLAYERS} players.` };
+    }
+    if (usedContactKeys.has(entry.normalizedContactKey)) {
+      return { ok: false, message: "That player is already in this round." };
+    }
+    if (normalizedNames.has(entry.displayName.trim().toLowerCase())) {
+      return { ok: false, message: "That name is already added." };
+    }
+
+    const player: Player = {
+      id: genId(),
+      name: entry.displayName,
+      normalizedContactKey: entry.normalizedContactKey,
+      paymentProfile: paymentProfileFromDirectory(entry),
+    };
+
+    setPlayers((prev) => [...prev, player]);
+    setError(undefined);
+
+    void syncSingleRoundPlayer(player).then((result) => {
+      setPlayersSyncState(result.outcome);
+    });
+
+    return { ok: true };
   }
 
   function removePlayer(id: string) {
@@ -418,6 +435,16 @@ function PlayersFormInner({
             />
           </div>
 
+          <button
+            type="button"
+            disabled={atCapacity}
+            onClick={() => setDirectoryOpen(true)}
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-fairway-600/30 bg-white px-4 text-sm font-medium text-fairway-800 shadow-sm transition hover:border-fairway-600/50 hover:bg-fairway-50 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <DirectoryIcon className="h-4 w-4 shrink-0" />
+            Add From Player Directory
+          </button>
+
           {contactPickerAvailable ? (
             <button
               type="button"
@@ -434,8 +461,8 @@ function PlayersFormInner({
             </button>
           ) : (
             <p className="rounded-xl border border-dashed border-sand bg-cream/40 px-3 py-2.5 text-center text-xs leading-relaxed text-fairway-900/65">
-              Contact import is not supported on this browser. Add player
-              manually.
+              Contact import is not supported on this browser. Add manually or
+              from Player Directory.
             </p>
           )}
 
@@ -516,6 +543,16 @@ function PlayersFormInner({
           Add at least {MIN_PLAYERS} players to continue.
         </p>
       ) : null}
+
+      <PlayerDirectoryPicker
+        open={directoryOpen}
+        onClose={() => setDirectoryOpen(false)}
+        ledger={ledger}
+        usedContactKeys={usedContactKeys}
+        usedNames={normalizedNames}
+        atCapacity={atCapacity}
+        onAdd={addPlayerFromDirectory}
+      />
     </div>
   );
 }
@@ -1306,6 +1343,25 @@ function formatDate(iso: string): string {
     month: "short",
     day: "numeric",
   });
+}
+
+function DirectoryIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <path d="M4 6h16M4 10h16M4 14h10M4 18h6" />
+      <circle cx="18" cy="16" r="3" />
+      <path d="M20 18h.01" />
+    </svg>
+  );
 }
 
 function ContactsIcon({ className = "" }: { className?: string }) {

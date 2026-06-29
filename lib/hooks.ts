@@ -1,17 +1,18 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
-
-const noopSubscribe = () => () => {};
-const getTrue = () => true;
-const getFalse = () => false;
+import { useEffect, useState } from "react";
 
 /**
- * Returns `false` during SSR and the very first client render, then `true`
- * after hydration. Use this to gate any code that reads from
- * `window`/`localStorage`, so the first paint matches the server and
- * post-hydration reads stay outside of `useEffect`.
+ * Returns `false` during SSR and the first client render, then `true` after
+ * mount. Gate any `window` / `localStorage` reads behind this hook and load
+ * that data inside `useEffect` so the server HTML matches the first paint.
  */
 export function useHasHydrated(): boolean {
-  return useSyncExternalStore(noopSubscribe, getTrue, getFalse);
+  const [hasHydrated, setHasHydrated] = useState(false);
+
+  useEffect(() => {
+    setHasHydrated(true);
+  }, []);
+
+  return hasHydrated;
 }

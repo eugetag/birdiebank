@@ -8,7 +8,28 @@
  */
 
 import { upsertPlayerRemote, type PlayersRemoteResult } from "./supabase/players";
-import type { DirectoryEntry } from "./types";
+import type { DirectoryEntry, PaymentProfile } from "./types";
+
+const DEFAULT_METHOD = "Cash" as const;
+
+/** Hydrate a PaymentProfile from a directory entry. */
+export function paymentProfileFromDirectory(
+  entry: DirectoryEntry,
+): PaymentProfile {
+  return {
+    country: (entry.country ?? "United States") as PaymentProfile["country"],
+    preferredMethod: (entry.preferredMethod ??
+      DEFAULT_METHOD) as PaymentProfile["preferredMethod"],
+    interacEmail: entry.interacEmail,
+    interacPhone: entry.interacPhone,
+    venmoHandle: entry.venmoHandle,
+    cashAppTag: entry.cashAppTag,
+    paypalLink: entry.paypalLink,
+    zelleEmail: entry.zelleEmail,
+    zellePhone: entry.zellePhone,
+    notes: entry.notes,
+  };
+}
 
 export type SaveDirectoryEntryResult = {
   /** The freshly written directory entry — already persisted to localStorage. */
